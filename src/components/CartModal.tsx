@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
+import UpsellSuggestions from './UpsellSuggestions';
 
 interface CartModalProps {
   onOrderComplete: (orderDetails: any) => void;
@@ -138,6 +139,9 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
                   </div>
                 </div>
               ))}
+
+              {/* Upsell Suggestions */}
+              <UpsellSuggestions />
 
               {/* Special Instructions */}
               <div className="pt-4">
