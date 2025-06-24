@@ -8,15 +8,21 @@ import FloatingCart from '@/components/FloatingCart';
 import CartModal from '@/components/CartModal';
 import OrderConfirmation from '@/components/OrderConfirmation';
 import Footer from '@/components/Footer';
+import WelcomeAnimation from '@/components/WelcomeAnimation';
 import { CartProvider } from '@/contexts/CartContext';
 
 const Index = () => {
+  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
 
   const handleOrderComplete = (details: any) => {
     setOrderDetails(details);
     setShowOrderConfirmation(true);
+  };
+
+  const handleWelcomeComplete = () => {
+    setShowWelcomeAnimation(false);
   };
 
   if (showOrderConfirmation) {
@@ -36,12 +42,20 @@ const Index = () => {
   return (
     <CartProvider>
       <div className="min-h-screen bg-white">
-        <Header />
-        <HeroSection />
-        <MenuSection />
-        <FloatingCart />
-        <CartModal onOrderComplete={handleOrderComplete} />
-        <Footer />
+        {showWelcomeAnimation && (
+          <WelcomeAnimation onComplete={handleWelcomeComplete} />
+        )}
+        
+        <div className={`transition-all duration-500 ${
+          showWelcomeAnimation ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+        }`}>
+          <Header />
+          <HeroSection />
+          <MenuSection />
+          <FloatingCart />
+          <CartModal onOrderComplete={handleOrderComplete} />
+          <Footer />
+        </div>
         <Toaster />
       </div>
     </CartProvider>
