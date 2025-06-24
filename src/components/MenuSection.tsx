@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import MenuCategory from './MenuCategory';
-import TodaysSpecial from './TodaysSpecial';
 import { Button } from '@/components/ui/button';
 
 const categories = [
@@ -115,9 +114,6 @@ const MenuSection = () => {
 
   return (
     <section className="py-6 px-4 max-w-7xl mx-auto">
-      {/* Today's Special */}
-      <TodaysSpecial />
-
       {/* Category Tabs */}
       <div className="flex space-x-2 overflow-x-auto pb-4 mb-6 custom-scrollbar">
         {categories.map((category) => (
