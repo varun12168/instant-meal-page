@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import MenuCategory from './MenuCategory';
+import MealTimeFilter from './MealTimeFilter';
+import AllDishesSection from './AllDishesSection';
 import { Button } from '@/components/ui/button';
 
 const categories = [
@@ -111,9 +113,42 @@ const menuData = {
 
 const MenuSection = () => {
   const [activeCategory, setActiveCategory] = useState('starters');
+  const [activeMealTime, setActiveMealTime] = useState('all');
+
+  const getFilteredMenuData = () => {
+    if (activeMealTime === 'all') {
+      return menuData[activeCategory as keyof typeof menuData];
+    }
+    
+    return menuData[activeCategory as keyof typeof menuData]?.filter((item: any) => {
+      // Add meal time data to existing items
+      const mealTimeMapping: { [key: string]: string[] } = {
+        'starter-1': ['lunch', 'dinner'],
+        'starter-2': ['lunch', 'dinner'],
+        'starter-3': ['lunch', 'dinner'],
+        'main-1': ['lunch', 'dinner'],
+        'main-2': ['lunch', 'dinner'],
+        'main-3': ['lunch', 'dinner'],
+        'bev-1': ['lunch', 'dinner', 'munch'],
+        'bev-2': ['breakfast', 'munch'],
+        'bev-3': ['lunch', 'dinner'],
+        'dessert-1': ['lunch', 'dinner'],
+        'dessert-2': ['lunch', 'dinner'],
+      };
+      
+      const itemMealTimes = mealTimeMapping[item.id] || ['lunch', 'dinner'];
+      return itemMealTimes.includes(activeMealTime);
+    }) || [];
+  };
 
   return (
     <section className="py-6 px-4 max-w-7xl mx-auto">
+      {/* Meal Time Filter */}
+      <MealTimeFilter 
+        onMealTimeChange={setActiveMealTime}
+        activeMealTime={activeMealTime}
+      />
+
       {/* Category Tabs */}
       <div className="flex space-x-2 overflow-x-auto pb-4 mb-6 custom-scrollbar">
         {categories.map((category) => (
@@ -135,9 +170,12 @@ const MenuSection = () => {
 
       {/* Menu Items */}
       <MenuCategory 
-        items={menuData[activeCategory as keyof typeof menuData]} 
+        items={getFilteredMenuData()} 
         categoryName={categories.find(c => c.id === activeCategory)?.name || ''} 
       />
+
+      {/* All Dishes Section */}
+      <AllDishesSection mealTimeFilter={activeMealTime} />
     </section>
   );
 };
