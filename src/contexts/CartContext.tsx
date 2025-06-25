@@ -27,9 +27,52 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const CART_STORAGE_KEY = 'restaurant-cart-items';
+
+// Helper functions for localStorage operations
+const saveCartToStorage = (items: CartItem[]) => {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.warn('Failed to save cart to localStorage:', error);
+  }
+};
+
+const loadCartFromStorage = (): CartItem[] => {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.warn('Failed to load cart from localStorage:', error);
+    return [];
+  }
+};
+
+const clearCartFromStorage = () => {
+  try {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Failed to clear cart from localStorage:', error);
+  }
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Load cart from localStorage on component mount
+  useEffect(() => {
+    const savedItems = loadCartFromStorage();
+    if (savedItems.length > 0) {
+      setItems(savedItems);
+      console.log('Cart loaded from localStorage:', savedItems.length, 'items');
+    }
+  }, []);
+
+  // Save cart to localStorage whenever items change
+  useEffect(() => {
+    saveCartToStorage(items);
+  }, [items]);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -98,6 +141,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearCart = () => {
     setItems([]);
     setIsCartOpen(false);
+    clearCartFromStorage();
+    console.log('Cart cleared from localStorage');
   };
 
   return (
