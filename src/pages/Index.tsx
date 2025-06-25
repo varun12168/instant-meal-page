@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
-import TopSellersCarousel from '@/components/TopSellersCarousel';
 import MenuSection from '@/components/MenuSection';
 import FloatingCart from '@/components/FloatingCart';
 import CartModal from '@/components/CartModal';
@@ -52,7 +51,6 @@ const Index = () => {
         }`}>
           <Header />
           <HeroSection />
-          <TopSellersCarousel />
           <MenuSection />
           <FloatingCart />
           <CartModal onOrderComplete={handleOrderComplete} />
