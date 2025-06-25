@@ -4,6 +4,7 @@ import { ShoppingCart, HelpCircle, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
+import LanguageSelector from './LanguageSelector';
 
 const Header = () => {
   const { totalItems, setIsCartOpen } = useCart();
@@ -23,6 +24,8 @@ const Header = () => {
 
         {/* Right Side Icons */}
         <div className="flex items-center space-x-3">
+          <LanguageSelector />
+          
           <Button
             variant="ghost"
             size="sm"
