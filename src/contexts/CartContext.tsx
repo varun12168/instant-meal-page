@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -10,6 +9,11 @@ export interface CartItem {
   quantity: number;
   notes?: string;
   category: string;
+}
+
+export interface OrderedItem extends CartItem {
+  status: 'preparing' | 'ready' | 'received';
+  orderTime: number;
 }
 
 export interface TimerState {
@@ -29,9 +33,12 @@ export interface TaxCalculation {
 
 interface CartContextType {
   items: CartItem[];
+  orderedItems: OrderedItem[];
   totalItems: number;
   totalAmount: number;
+  orderedTotalAmount: number;
   taxCalculation: TaxCalculation;
+  orderedTaxCalculation: TaxCalculation;
   timerState: TimerState;
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
   removeItem: (id: string) => void;
@@ -40,9 +47,14 @@ interface CartContextType {
   clearCart: () => void;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  isOrderSummaryOpen: boolean;
+  setIsOrderSummaryOpen: (open: boolean) => void;
   startOrderTimer: () => void;
   updateTimerElapsed: (elapsed: number) => void;
   resetTimer: () => void;
+  moveCartToOrdered: () => void;
+  updateOrderedItemStatus: (id: string, status: 'preparing' | 'ready' | 'received') => void;
+  canPayNow: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -71,31 +83,45 @@ const calculateTotalPrepTime = (items: CartItem[]): number => {
   return Math.round(maxPrepTime + (totalIndividualTime * 0.1));
 };
 
+// Calculate tax for given amount
+const calculateTax = (amount: number): TaxCalculation => ({
+  subtotal: amount,
+  cgst: Math.round(amount * 0.025),
+  sgst: Math.round(amount * 0.025),
+  total: amount + Math.round(amount * 0.025) + Math.round(amount * 0.025)
+});
+
 // Comprehensive data structure for localStorage
 interface CartStorageData {
   items: CartItem[];
+  orderedItems: OrderedItem[];
   timerState: TimerState;
   lastUpdated: number;
 }
 
-const saveCartToStorage = (items: CartItem[], timerState: TimerState) => {
+const saveCartToStorage = (items: CartItem[], orderedItems: OrderedItem[], timerState: TimerState) => {
   try {
     const data: CartStorageData = {
       items,
+      orderedItems,
       timerState,
       lastUpdated: Date.now()
     };
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data));
-    console.log('Cart data saved to localStorage:', { itemCount: items.length, timerActive: timerState.isActive });
+    console.log('Cart data saved to localStorage:', { 
+      itemCount: items.length, 
+      orderedCount: orderedItems.length,
+      timerActive: timerState.isActive 
+    });
   } catch (error) {
     console.warn('Failed to save cart to localStorage:', error);
   }
 };
 
-const loadCartFromStorage = (): { items: CartItem[]; timerState: TimerState } => {
+const loadCartFromStorage = (): { items: CartItem[]; orderedItems: OrderedItem[]; timerState: TimerState } => {
   try {
     const stored = localStorage.getItem(CART_STORAGE_KEY);
-    if (!stored) return { items: [], timerState: getInitialTimerState([]) };
+    if (!stored) return { items: [], orderedItems: [], timerState: getInitialTimerState([]) };
     
     const data: CartStorageData = JSON.parse(stored);
     
@@ -110,15 +136,20 @@ const loadCartFromStorage = (): { items: CartItem[]; timerState: TimerState } =>
     }
     
     console.log('Cart data loaded from localStorage:', { 
-      itemCount: data.items.length, 
+      itemCount: data.items.length,
+      orderedCount: data.orderedItems?.length || 0,
       timerActive: adjustedTimerState.isActive,
       timeElapsed: adjustedTimerState.timeElapsed 
     });
     
-    return { items: data.items, timerState: adjustedTimerState };
+    return { 
+      items: data.items, 
+      orderedItems: data.orderedItems || [],
+      timerState: adjustedTimerState 
+    };
   } catch (error) {
     console.warn('Failed to load cart from localStorage:', error);
-    return { items: [], timerState: getInitialTimerState([]) };
+    return { items: [], orderedItems: [], timerState: getInitialTimerState([]) };
   }
 };
 
@@ -147,33 +178,36 @@ const getInitialTimerState = (items: CartItem[]): TimerState => {
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [orderedItems, setOrderedItems] = useState<OrderedItem[]>([]);
   const [timerState, setTimerState] = useState<TimerState>(getInitialTimerState([]));
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isOrderSummaryOpen, setIsOrderSummaryOpen] = useState(false);
 
   // Load cart from localStorage on component mount
   useEffect(() => {
-    const { items: savedItems, timerState: savedTimerState } = loadCartFromStorage();
-    if (savedItems.length > 0) {
+    const { items: savedItems, orderedItems: savedOrderedItems, timerState: savedTimerState } = loadCartFromStorage();
+    if (savedItems.length > 0 || savedOrderedItems.length > 0) {
       setItems(savedItems);
+      setOrderedItems(savedOrderedItems);
       setTimerState(savedTimerState);
     }
   }, []);
 
-  // Save cart to localStorage whenever items or timer state changes
+  // Save cart to localStorage whenever items, ordered items, or timer state changes
   useEffect(() => {
-    saveCartToStorage(items, timerState);
-  }, [items, timerState]);
+    saveCartToStorage(items, orderedItems, timerState);
+  }, [items, orderedItems, timerState]);
 
   // Calculate derived values
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const orderedTotalAmount = orderedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  const taxCalculation: TaxCalculation = {
-    subtotal: totalAmount,
-    cgst: Math.round(totalAmount * 0.025),
-    sgst: Math.round(totalAmount * 0.025),
-    total: totalAmount + Math.round(totalAmount * 0.025) + Math.round(totalAmount * 0.025)
-  };
+  const taxCalculation = calculateTax(totalAmount);
+  const orderedTaxCalculation = calculateTax(orderedTotalAmount);
+
+  // Check if all ordered items are received
+  const canPayNow = orderedItems.length > 0 && orderedItems.every(item => item.status === 'received');
 
   const updateItemPrepTimes = (newItems: CartItem[]) => {
     const itemPrepTimes: { [itemId: string]: number } = {};
@@ -273,6 +307,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  const moveCartToOrdered = () => {
+    const newOrderedItems: OrderedItem[] = items.map(item => ({
+      ...item,
+      status: 'preparing' as const,
+      orderTime: Date.now()
+    }));
+
+    setOrderedItems(prev => [...prev, ...newOrderedItems]);
+    setItems([]);
+    setIsCartOpen(false);
+  };
+
+  const updateOrderedItemStatus = (id: string, status: 'preparing' | 'ready' | 'received') => {
+    setOrderedItems(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, status } : item
+      )
+    );
+  };
+
   const startOrderTimer = () => {
     setTimerState(prevTimer => ({
       ...prevTimer,
@@ -280,6 +334,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startTime: Date.now(),
       timeElapsed: 0
     }));
+    moveCartToOrdered();
   };
 
   const updateTimerElapsed = (elapsed: number) => {
@@ -300,8 +355,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setItems([]);
+    setOrderedItems([]);
     setTimerState(getInitialTimerState([]));
     setIsCartOpen(false);
+    setIsOrderSummaryOpen(false);
     clearCartFromStorage();
   };
 
@@ -309,9 +366,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <CartContext.Provider
       value={{
         items,
+        orderedItems,
         totalItems,
         totalAmount,
+        orderedTotalAmount,
         taxCalculation,
+        orderedTaxCalculation,
         timerState,
         addItem,
         removeItem,
@@ -320,9 +380,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearCart,
         isCartOpen,
         setIsCartOpen,
+        isOrderSummaryOpen,
+        setIsOrderSummaryOpen,
         startOrderTimer,
         updateTimerElapsed,
         resetTimer,
+        moveCartToOrdered,
+        updateOrderedItemStatus,
+        canPayNow,
       }}
     >
       {children}

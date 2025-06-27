@@ -6,6 +6,7 @@ import HeroSection from '@/components/HeroSection';
 import MenuSection from '@/components/MenuSection';
 import FloatingCart from '@/components/FloatingCart';
 import CartModal from '@/components/CartModal';
+import OrderSummaryModal from '@/components/OrderSummaryModal';
 import OrderConfirmation from '@/components/OrderConfirmation';
 import Footer from '@/components/Footer';
 import WelcomeAnimation from '@/components/WelcomeAnimation';
@@ -53,7 +54,8 @@ const Index = () => {
           <HeroSection />
           <MenuSection />
           <FloatingCart />
-          <CartModal onOrderComplete={handleOrderComplete} />
+          <CartModal />
+          <OrderSummaryModal />
           <Footer />
         </div>
         <Toaster />

@@ -1,13 +1,12 @@
 
 import React from 'react';
-import { ShoppingCart, HelpCircle, Utensils } from 'lucide-react';
+import { ShoppingCart, HelpCircle, Utensils, Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
-import LanguageSelector from './LanguageSelector';
 
 const Header = () => {
-  const { totalItems, setIsCartOpen } = useCart();
+  const { totalItems, setIsCartOpen, orderedItems, setIsOrderSummaryOpen } = useCart();
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
@@ -24,8 +23,6 @@ const Header = () => {
 
         {/* Right Side Icons */}
         <div className="flex items-center space-x-3">
-          <LanguageSelector />
-          
           <Button
             variant="ghost"
             size="sm"
@@ -39,6 +36,23 @@ const Header = () => {
                 className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center p-0 bg-primary text-xs text-white"
               >
                 {totalItems}
+              </Badge>
+            )}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="relative"
+            onClick={() => setIsOrderSummaryOpen(true)}
+          >
+            <Clipboard className="w-5 h-5" />
+            {orderedItems.length > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center p-0 bg-orange-500 text-xs text-white"
+              >
+                {orderedItems.length}
               </Badge>
             )}
           </Button>
