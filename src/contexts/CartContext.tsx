@@ -61,26 +61,15 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'restaurant-cart-data';
 
-// Helper function to get item prep time based on category
+// Helper function to get item prep time - now consistently 4 minutes
 const getItemPrepTime = (category: string): number => {
-  const prepTimes: { [key: string]: number } = {
-    'Starters': 12,
-    'Mains': 18,
-    'Drinks': 3,
-    'Chinese': 15,
-    'Sushi': 20,
-    'Pizza': 14,
-    'Biryani': 25
-  };
-  return prepTimes[category] || 15;
+  return 4; // 4 minutes for all items as requested
 };
 
-// Calculate total prep time (longest item + 30% for parallel cooking)
+// Calculate total prep time (4 minutes per item)
 const calculateTotalPrepTime = (items: CartItem[]): number => {
   if (items.length === 0) return 0;
-  const maxPrepTime = Math.max(...items.map(item => getItemPrepTime(item.category)));
-  const totalIndividualTime = items.reduce((sum, item) => sum + getItemPrepTime(item.category), 0);
-  return Math.round(maxPrepTime + (totalIndividualTime * 0.1));
+  return items.length * 4; // 4 minutes per item
 };
 
 // Calculate tax for given amount
@@ -320,11 +309,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateOrderedItemStatus = (id: string, status: 'preparing' | 'ready' | 'received') => {
-    setOrderedItems(prev => 
-      prev.map(item => 
+    setOrderedItems(prev => {
+      const updatedItems = prev.map(item => 
         item.id === id ? { ...item, status } : item
-      )
-    );
+      );
+      
+      // Check if all items are now received and reset timer if so
+      const allReceived = updatedItems.length > 0 && updatedItems.every(item => item.status === 'received');
+      if (allReceived && timerState.isActive) {
+        // Reset timer when all items are received
+        setTimerState(prevTimer => ({
+          ...prevTimer,
+          isActive: false,
+          timeElapsed: 0,
+          startTime: undefined
+        }));
+      }
+      
+      return updatedItems;
+    });
   };
 
   const startOrderTimer = () => {
