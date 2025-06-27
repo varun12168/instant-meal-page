@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Receipt } from 'lucide-react';
+import { X, Receipt, CreditCard, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CartItem } from '@/contexts/CartContext';
 
@@ -12,6 +12,7 @@ interface CostBreakdownModalProps {
   cgst: number;
   sgst: number;
   total: number;
+  onPayment: (method: string) => void;
 }
 
 const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
@@ -21,7 +22,8 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
   subtotal,
   cgst,
   sgst,
-  total
+  total,
+  onPayment
 }) => {
   if (!isOpen) return null;
 
@@ -82,10 +84,27 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
             </div>
           </div>
 
-          {/* Payment Button */}
-          <Button className="w-full mt-6 bg-primary text-white hover:bg-primary/90 py-3 rounded-xl">
-            Proceed to Payment - ₹{total}
-          </Button>
+          {/* Payment Options */}
+          <div className="space-y-3 pt-4">
+            <h3 className="font-medium text-gray-900">Choose Payment Method:</h3>
+            
+            <Button 
+              onClick={() => onPayment('card')}
+              className="w-full bg-primary text-white hover:bg-primary/90 py-3 rounded-xl"
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Pay with Card - ₹{total}
+            </Button>
+            
+            <Button 
+              onClick={() => onPayment('upi')}
+              variant="outline" 
+              className="w-full py-3 rounded-xl"
+            >
+              <Smartphone className="w-4 h-4 mr-2" />
+              Pay with UPI - ₹{total}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

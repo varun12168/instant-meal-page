@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Clock, ChefHat, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,34 +14,21 @@ interface TimerItem {
 interface LiveOrderTimerProps {
   items: TimerItem[];
   isActive: boolean;
+  timeElapsed: number;
+  totalPrepTime: number;
   onComplete?: () => void;
 }
 
-const LiveOrderTimer: React.FC<LiveOrderTimerProps> = ({ items, isActive, onComplete }) => {
-  const [timeElapsed, setTimeElapsed] = useState(0);
+const LiveOrderTimer: React.FC<LiveOrderTimerProps> = ({ 
+  items, 
+  isActive, 
+  timeElapsed, 
+  totalPrepTime,
+  onComplete 
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  // Calculate total prep time (longest item + 30% for parallel cooking)
-  const totalPrepTime = Math.max(...items.map(item => item.prepTime)) + 
-    Math.round(items.reduce((sum, item) => sum + item.prepTime, 0) * 0.1);
-  
   const remainingTime = Math.max(0, totalPrepTime * 60 - timeElapsed); // in seconds
-  
-  useEffect(() => {
-    if (!isActive) return;
-    
-    const timer = setInterval(() => {
-      setTimeElapsed(prev => {
-        const newTime = prev + 1;
-        if (newTime >= totalPrepTime * 60 && onComplete) {
-          onComplete();
-        }
-        return newTime;
-      });
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [isActive, totalPrepTime, onComplete]);
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

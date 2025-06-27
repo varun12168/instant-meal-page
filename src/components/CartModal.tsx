@@ -1,8 +1,7 @@
 
-import React, { useState } from 'react';
-import { X, Minus, Plus, Trash2, CreditCard, Smartphone, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Minus, Plus, Trash2, CreditCard, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from '@/hooks/use-toast';
@@ -16,44 +15,52 @@ interface CartModalProps {
 const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
   const { 
     items, 
-    totalAmount, 
+    totalAmount,
+    taxCalculation,
+    timerState,
     isCartOpen, 
     setIsCartOpen, 
     updateQuantity, 
     removeItem, 
     updateNotes,
-    clearCart 
+    clearCart,
+    startOrderTimer,
+    updateTimerElapsed,
+    resetTimer
   } = useCart();
 
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [isOrderStarted, setIsOrderStarted] = useState(false);
   const [showCostBreakdown, setShowCostBreakdown] = useState(false);
 
-  // Tax calculations
-  const cgst = Math.round(totalAmount * 0.025);
-  const sgst = Math.round(totalAmount * 0.025);
-  const finalTotal = totalAmount + cgst + sgst;
+  // Timer management with localStorage persistence
+  useEffect(() => {
+    if (!timerState.isActive) return;
+    
+    const timer = setInterval(() => {
+      const newElapsed = timerState.timeElapsed + 1;
+      updateTimerElapsed(newElapsed);
+      
+      // Check if timer is complete
+      if (newElapsed >= timerState.totalPrepTime * 60) {
+        toast({
+          title: "Order Ready!",
+          description: "Your order is ready to be served.",
+          duration: 5000,
+        });
+        resetTimer();
+      }
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [timerState.isActive, timerState.timeElapsed, timerState.totalPrepTime, updateTimerElapsed, resetTimer]);
 
-  // Mock prep times for demo (in real app, this would come from Firebase)
-  const getItemPrepTime = (category: string) => {
-    const prepTimes: { [key: string]: number } = {
-      'Starters': 12,
-      'Mains': 18,
-      'Drinks': 3,
-      'Chinese': 15,
-      'Sushi': 20,
-      'Pizza': 14,
-      'Biryani': 25
-    };
-    return prepTimes[category] || 15;
-  };
-
+  // Convert cart items to timer items format
   const timerItems = items.map(item => ({
     id: item.id,
     name: item.name,
     quantity: item.quantity,
-    prepTime: getItemPrepTime(item.category)
+    prepTime: timerState.itemPrepTimes[item.id] || 15
   }));
 
   const handleOrderNow = () => {
@@ -66,7 +73,7 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
       return;
     }
     
-    setIsOrderStarted(true);
+    startOrderTimer();
     toast({
       title: "Order Started!",
       description: "Your order is now being prepared.",
@@ -82,14 +89,15 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
     
     const orderDetails = {
       items,
-      subtotal: totalAmount,
-      cgst,
-      sgst,
-      total: finalTotal,
+      subtotal: taxCalculation.subtotal,
+      cgst: taxCalculation.cgst,
+      sgst: taxCalculation.sgst,
+      total: taxCalculation.total,
       specialInstructions,
       paymentMethod: method,
       orderId: `ORD${Date.now()}`,
-      estimatedTime: '15-20 mins'
+      estimatedTime: `${timerState.totalPrepTime} mins`,
+      timerState
     };
 
     toast({
@@ -100,7 +108,6 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
 
     clearCart();
     setIsProcessingPayment(false);
-    setIsOrderStarted(false);
     onOrderComplete(orderDetails);
   };
 
@@ -134,13 +141,16 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
                 {/* Live Order Timer */}
                 <LiveOrderTimer 
                   items={timerItems}
-                  isActive={isOrderStarted}
+                  isActive={timerState.isActive}
+                  timeElapsed={timerState.timeElapsed}
+                  totalPrepTime={timerState.totalPrepTime}
                   onComplete={() => {
                     toast({
                       title: "Order Ready!",
                       description: "Your order is ready to be served.",
                       duration: 5000,
                     });
+                    resetTimer();
                   }}
                 />
 
@@ -221,7 +231,7 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
           {items.length > 0 && (
             <div className="border-t border-gray-100 p-6 space-y-4">
               {/* Order Now Button */}
-              {!isOrderStarted && (
+              {!timerState.isActive && (
                 <Button
                   onClick={handleOrderNow}
                   className="w-full bg-orange-500 text-white hover:bg-orange-600 py-3 rounded-xl font-medium"
@@ -235,9 +245,10 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
               <Button
                 onClick={() => setShowCostBreakdown(true)}
                 className="w-full bg-primary text-white hover:bg-primary/90 py-3 rounded-xl font-medium"
+                disabled={isProcessingPayment}
               >
                 <CreditCard className="w-4 h-4 mr-2" />
-                Pay Now - ₹{finalTotal}
+                {isProcessingPayment ? 'Processing...' : `Pay Now - ₹${taxCalculation.total}`}
               </Button>
 
               <p className="text-xs text-gray-500 text-center">
@@ -253,10 +264,11 @@ const CartModal: React.FC<CartModalProps> = ({ onOrderComplete }) => {
         isOpen={showCostBreakdown}
         onClose={() => setShowCostBreakdown(false)}
         items={items}
-        subtotal={totalAmount}
-        cgst={cgst}
-        sgst={sgst}
-        total={finalTotal}
+        subtotal={taxCalculation.subtotal}
+        cgst={taxCalculation.cgst}
+        sgst={taxCalculation.sgst}
+        total={taxCalculation.total}
+        onPayment={handlePayment}
       />
     </>
   );
